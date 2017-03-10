@@ -322,6 +322,11 @@ namespace {
   MaxMemoryInhibit("max-memory-inhibit",
             cl::desc("Inhibit forking at memory cap (vs. random terminate) (default=on)"),
             cl::init(true));
+
+  cl::opt<unsigned>
+  SymbolicMallocBound("sym-malloc-bound",
+		  cl::desc("Upper bound for malloc instructions with symbolic sizes"),
+		  cl::init(0));
 }
 
 
