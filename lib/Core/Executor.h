@@ -433,6 +433,9 @@ private:
   void checkMemoryUsage();
   void printDebugInstructions(ExecutionState &state);
   void doDumpStates();
+	void executeConstantAlloc(bool isLocal, bool zeroMemory,
+			const ObjectState* reallocFrom, ExecutionState& state,
+			ConstantExpr* CE, KInstruction* target);
 
 public:
   Executor(llvm::LLVMContext &ctx, const InterpreterOptions &opts,
