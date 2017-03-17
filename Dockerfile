@@ -1,6 +1,13 @@
 FROM ubuntu:14.04
 MAINTAINER Dan Liew <daniel.liew@imperial.ac.uk>
 
+ENV DEBIAN_FRONTEND noninteractive
+
+# Install prerequisites.
+RUN apt-get update && \
+    apt-get install -y software-properties-common unzip wget curl gdebi-core && \
+    apt-get clean
+
 # FIXME: Docker doesn't currently offer a way to
 # squash the layers from within a Dockerfile so
 # the resulting image is unnecessarily large!
@@ -17,6 +24,34 @@ ENV LLVM_VERSION=3.4 \
     USE_CMAKE=1 \
     ASAN_BUILD=0 \
     UBSAN_BUILD=0
+
+# Install Java
+RUN apt-get update && \
+    apt-get install -y software-properties-common 
+RUN add-apt-repository ppa:openjdk-r/ppa
+RUN apt-get update
+RUN apt-get install -y openjdk-8-jdk
+
+# Install Eclipse for C++  
+RUN cd /tmp && \
+    wget -q 'http://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/kepler/SR2/eclipse-cpp-kepler-SR2-linux-gtk-x86_64.tar.gz&r=1' -O /tmp/eclipse.tar.gz && \
+    echo 'Installing Eclipse' && \
+    tar -xzf /tmp/eclipse.tar.gz && \
+    mv eclipse /usr/lib/ && \
+    rm -rf /tmp/*
+
+# Install SSH server.
+RUN apt-get update && \
+    apt-get install -y openssh-server && \
+    apt-get clean
+RUN mkdir /var/run/sshd
+EXPOSE 22
+
+ADD initialize /usr/local/bin/initialize
+
+RUN chmod +x /usr/local/bin/initialize
+
+CMD /usr/local/bin/initialize
 
 RUN apt-get update && \
     apt-get -y --no-install-recommends install \
@@ -131,4 +166,5 @@ RUN [ "X${USE_CMAKE}" != "X1" ] && \
 
 # Link klee to the libkleeRuntest library needed by docker run
 RUN [ "X${USE_CMAKE}" != "X1" ] && (ln -s ${BUILD_DIR}/klee/Release+Asserts/lib/libkleeRuntest.so /usr/lib/libkleeRuntest.so.1.0) || echo "Skipping hack"
-USER klee
+
+USER root
