@@ -93,9 +93,11 @@ RUN useradd -m klee && \
 USER klee
 WORKDIR /home/klee
 
-# Copy across source files needed for build
 RUN mkdir ${KLEE_SRC}
-ADD / ${KLEE_SRC}
+# Clone the klee repository
+RUN cd ${KLEE_SRC} && \
+    git clone https://github.com/alebugariu/klee.git . && \
+    cd ..
 
 # Set klee user to be owner
 RUN sudo chown --recursive klee: ${KLEE_SRC}
