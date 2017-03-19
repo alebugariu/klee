@@ -19,6 +19,8 @@ ENV LLVM_VERSION=3.4 \
     ENABLE_OPTIMIZED=1 \
     KLEE_UCLIBC=klee_uclibc_v1.0.0 \
     KLEE_SRC=/home/klee/klee_src \
+    ELINA_SRC=/home/klee/elina \ 
+    APRON_SRC=/home/klee/apron \
     COVERAGE=0 \
     BUILD_DIR=/home/klee/klee_build \
     USE_CMAKE=1 \
@@ -53,6 +55,11 @@ RUN chmod +x /usr/local/bin/initialize
 
 CMD /usr/local/bin/initialize
 
+# Install fish.
+RUN apt-get update && \
+    apt-get install -y sudo man-db fish && \
+    apt-get clean
+
 RUN apt-get update && \
     apt-get -y --no-install-recommends install \
         clang-${LLVM_VERSION} \
@@ -83,7 +90,29 @@ RUN apt-get update && \
     ( wget -O - http://download.opensuse.org/repositories/home:delcypher:z3/xUbuntu_14.04/Release.key | apt-key add - ) && \
     echo 'deb http://download.opensuse.org/repositories/home:/delcypher:/z3/xUbuntu_14.04/ /' >> /etc/apt/sources.list.d/z3.list && \
     apt-get update
-
+    
+# Install Elina prerequisites
+RUN cd /tmp && \
+    wget -c https://gmplib.org/download/gmp/gmp-6.1.2.tar.xz -O gmp.tar.xz && \
+    tar -xf gmp.tar.xz && \
+    cd gmp-* && \
+    ./configure --enable-cxx && \
+    make && \
+    make install && \
+    cd /tmp && \
+    wget -c http://www.mpfr.org/mpfr-current/mpfr-3.1.5.tar.xz -O mpfr.tar.xz && \
+    tar -xf mpfr.tar.xz && \
+    cd mpfr-* && \
+    ./configure && \
+    make && \
+    make install && \
+    rm -rf /tmp/*
+        
+# Install Apron prerequisites
+RUN apt-get update && \
+    apt-get -y install build-essential
+    
+    
 # Create ``klee`` user for container with password ``klee``.
 # and give it password-less sudo access (temporarily so we can use the TravisCI scripts)
 RUN useradd -m klee && \
@@ -93,14 +122,41 @@ RUN useradd -m klee && \
 USER klee
 WORKDIR /home/klee
 
-RUN mkdir ${KLEE_SRC}
+
 # Clone the klee repository
+RUN mkdir ${KLEE_SRC}
 RUN cd ${KLEE_SRC} && \
     git clone https://github.com/alebugariu/klee.git . && \
     cd ..
 
+# Clone and install ELINA    
+RUN mkdir ${ELINA_SRC} && \
+    cd ${ELINA_SRC} && \
+    git clone https://github.com/alebugariu/ELINA.git . 
+    
+USER root
+RUN cd ${ELINA_SRC} && \
+    make && \
+    make install
+
+USER klee   
+  
+# Clone and install APRON    
+RUN mkdir ${APRON_SRC} && \
+    cd ${APRON_SRC} && \
+    git clone https://github.com/alebugariu/apron.git . 
+
+USER root
+RUN cd ${APRON_SRC} && \
+    make && \
+    make install
+
+USER klee 
+
 # Set klee user to be owner
 RUN sudo chown --recursive klee: ${KLEE_SRC}
+RUN sudo chown --recursive klee: ${ELINA_SRC}
+RUN sudo chown --recursive klee: ${APRON_SRC}
 
 # Create build directory
 RUN mkdir -p ${BUILD_DIR}
