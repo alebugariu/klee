@@ -3168,6 +3168,8 @@ ObjectState *Executor::bindObjectInState(ExecutionState &state,
 void Executor::executeConstantAlloc(bool isLocal, bool zeroMemory,
 		const ObjectState* reallocFrom, ExecutionState& state, uint64_t size,
 		KInstruction* target) {
+
+	//std :: cout << "Inside execute const alloc!\n";
 	const llvm::Value* allocSite = state.prevPC->inst;
 	size_t allocationAlignment = getAllocationAlignment(allocSite);
 	MemoryObject* mo = memory->allocate(size, isLocal, /*isGlobal=*/
@@ -3197,23 +3199,19 @@ void Executor::insertAssume(ExecutionState &state, KInstruction *target,
 	assert(
 			arguments.size() == 1
 					&& "invalid number of arguments to the inserted klee_assume statement");
-
+	std::cout << arguments.size() << std::endl;
 	ref<Expr> e = arguments[0];
-
 	if (e->getWidth() != Expr::Bool)
 		e = NeExpr::create(e, ConstantExpr::create(0, e->getWidth()));
-
 	bool res;
 	bool success __attribute__ ((unused)) = solver->mustBeFalse(state, e, res);
 	assert(success && "FIXME: Unhandled solver failure");
 	if (res) {
-		if (SpecialFunctionHandler::silentKleeAssume()) {
-			terminateState(state);
-		} else {
-			terminateStateOnError(state,
-					"the inserted klee_assume statement is provably false",
-					Executor::User);
-		}
+		std::string Str;
+		llvm::raw_string_ostream info(Str);
+		info << "The chosen malloc bound of " << SymbolicMallocBound
+				<< " is provably too small";
+		terminateStateOnError(state, info.str(), Model);
 	} else {
 		addConstraint(state, e);
 	}
@@ -3223,19 +3221,24 @@ void Executor::executeAlloc(ExecutionState &state, ref<Expr> size, bool isLocal,
 		KInstruction *target, bool zeroMemory, const ObjectState *reallocFrom) {
 	size = toUnique(state, size);
 	if (ConstantExpr *CE = dyn_cast<ConstantExpr>(size)) {
-		executeConstantAlloc(isLocal, zeroMemory, reallocFrom, state, CE->getZExtValue(), target);
+		executeConstantAlloc(isLocal, zeroMemory, reallocFrom, state,
+				CE->getZExtValue(), target);
 	} else if (SymbolicMallocBound != 0u) {
-		std::cout << "HEREEEEEEE ";
-		//std::cout<<size->getKind()<< " is the size";
+		ref<Expr> leftExpression = size->getKid(0);
+		ConstantExpr *allocatedSize = dyn_cast<ConstantExpr>(leftExpression);
+		ref<Expr> rigthExpression = size->getKid(1);
 		Expr::Width W = size->getWidth();
-		ref<Expr> symbolicBoundExpr = ConstantExpr::alloc(SymbolicMallocBound, W);
+		ref<Expr> symbolicBoundExpr = MulExpr::create(allocatedSize,
+				ConstantExpr::alloc(SymbolicMallocBound, W));
 		ref<Expr> assumeStatement = UleExpr::create(size, symbolicBoundExpr);
 		std::vector<ref<Expr> > arguments;
-		arguments[0] = assumeStatement;
+		arguments.push_back(assumeStatement);
 		insertAssume(state, target, arguments);
-		executeConstantAlloc(isLocal, zeroMemory, reallocFrom, state, SymbolicMallocBound, target);
+		std::cout << "Klee assume succesfully inserted " << std::endl;
+		executeConstantAlloc(isLocal, zeroMemory, reallocFrom, state,
+				allocatedSize->getLimitedValue(1000000) * SymbolicMallocBound,
+				target);
 	} else {
-		std::cout << "ON ELSE" << "\n";
 		// XXX For now we just pick a size. Ideally we would support
 		// symbolic sizes fully but even if we don't it would be better to
 		// "smartly" pick a value, for example we could fork and pick the

@@ -67,7 +67,6 @@ namespace klee {
     static const_iterator begin();
     static const_iterator end();
     static int size();
-    static bool silentKleeAssume();
 
   public:
     SpecialFunctionHandler(Executor &_executor);

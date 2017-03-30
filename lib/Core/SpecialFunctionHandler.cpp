@@ -166,10 +166,6 @@ SpecialFunctionHandler::SpecialFunctionHandler(Executor &_executor) :
 		executor(_executor) {
 }
 
-bool SpecialFunctionHandler::silentKleeAssume() {
-	return SilentKleeAssume != 0;
-}
-
 void SpecialFunctionHandler::prepare() {
 	unsigned N = size();
 
