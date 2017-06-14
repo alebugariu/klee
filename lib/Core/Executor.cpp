@@ -290,7 +290,7 @@ cl::opt<bool> MaxMemoryInhibit("max-memory-inhibit",
 cl::opt<unsigned> SymbolicMallocBound("sym-malloc-bound",
 		cl::desc(
 				"Upper bound for malloc instructions with symbolic sizes (default=0 (concretize))"),
-		cl::init(0));
+		cl::init(0u));
 }
 
 namespace klee {
@@ -3224,20 +3224,16 @@ void Executor::executeAlloc(ExecutionState &state, ref<Expr> size, bool isLocal,
 		executeConstantAlloc(isLocal, zeroMemory, reallocFrom, state,
 				CE->getZExtValue(), target);
 	} else if (SymbolicMallocBound != 0u) {
-		ref<Expr> leftExpression = size->getKid(0);
-		ConstantExpr *allocatedSize = dyn_cast<ConstantExpr>(leftExpression);
-		ref<Expr> rigthExpression = size->getKid(1);
 		Expr::Width W = size->getWidth();
-		ref<Expr> symbolicBoundExpr = MulExpr::create(allocatedSize,
-				ConstantExpr::alloc(SymbolicMallocBound, W));
-		ref<Expr> assumeStatement = UleExpr::create(size, symbolicBoundExpr);
+		ref<Expr> symbolicBoundExpr = ConstantExpr::alloc(SymbolicMallocBound, W);
+		ref<Expr> assumeStatement = UltExpr::create(size, symbolicBoundExpr);
 		std::vector<ref<Expr> > arguments;
 		arguments.push_back(assumeStatement);
 		insertAssume(state, target, arguments);
-		std::cout << "Klee assume succesfully inserted " << std::endl;
-		executeConstantAlloc(isLocal, zeroMemory, reallocFrom, state,
-				allocatedSize->getLimitedValue(1000000) * SymbolicMallocBound,
-				target);
+		/*std::cout << "Klee assume successfully inserted: ";
+		assumeStatement -> print(outs());
+		std::cout << std::endl;*/
+		executeConstantAlloc(isLocal, zeroMemory, reallocFrom, state, SymbolicMallocBound, target);
 	} else {
 		// XXX For now we just pick a size. Ideally we would support
 		// symbolic sizes fully but even if we don't it would be better to
