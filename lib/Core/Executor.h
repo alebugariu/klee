@@ -436,6 +436,8 @@ private:
   void executeConstantAlloc(bool isLocal, bool zeroMemory,
 			const ObjectState* reallocFrom, ExecutionState& state,
 			uint64_t size, KInstruction* target);
+  void insertAssume(ExecutionState &state, KInstruction *target,
+  		std::vector<ref<Expr> > &arguments);
 
 public:
   Executor(llvm::LLVMContext &ctx, const InterpreterOptions &opts,
