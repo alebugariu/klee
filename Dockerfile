@@ -100,7 +100,7 @@ RUN cd /tmp && \
     make && \
     make install && \
     cd /tmp && \
-    wget -c http://www.mpfr.org/mpfr-current/mpfr-3.1.5.tar.xz -O mpfr.tar.xz && \
+    wget -c http://www.mpfr.org/mpfr-current/mpfr-4.0.1.tar.xz -O mpfr.tar.xz && \
     tar -xf mpfr.tar.xz && \
     cd mpfr-* && \
     ./configure && \
